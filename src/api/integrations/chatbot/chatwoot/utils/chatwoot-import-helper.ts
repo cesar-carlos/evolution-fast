@@ -201,7 +201,8 @@ class ChatwootImport {
 
       return existingSourceIdsSet;
     } catch (error) {
-      this.logger.error(`Error on getExistingSourceIds: ${error.toString()}`);
+      // Log as verbose instead of error when Chatwoot PostgreSQL database is not configured
+      this.logger.verbose(`Could not query Chatwoot database (database may not be configured): ${error.toString()}`);
       return new Set<string>();
     }
   }
