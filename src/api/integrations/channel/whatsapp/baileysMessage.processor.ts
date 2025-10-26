@@ -1,6 +1,6 @@
 import { Logger } from '@config/logger.config';
 import { BaileysEventMap, MessageUpsertType, WAMessage } from 'baileys';
-import { catchError, concatMap, delay, EMPTY, from, retryWhen, Subject, Subscription, take, tap } from 'rxjs';
+import { catchError, delay, EMPTY, from, mergeMap, retryWhen, Subject, Subscription, take, tap } from 'rxjs';
 
 type MessageUpsertPayload = BaileysEventMap['messages.upsert'];
 type MountProps = {
@@ -22,18 +22,29 @@ export class BaileysMessageProcessor {
     this.subscription = this.messageSubject
       .pipe(
         tap(({ messages }) => {
-          this.processorLogs.log(`Processing batch of ${messages.length} messages`);
+          const timestamp = new Date().toISOString();
+          this.processorLogs.log(`[${timestamp}] Processing batch of ${messages.length} messages`);
         }),
-        concatMap(({ messages, type, requestId, settings }) =>
-          from(onMessageReceive({ messages, type, requestId }, settings)).pipe(
-            retryWhen((errors) =>
-              errors.pipe(
-                tap((error) => this.processorLogs.warn(`Retrying message batch due to error: ${error.message}`)),
-                delay(200), // Reduzido para 200ms de delay
-                take(3), // Máximo 3 tentativas
+        // Changed from concatMap to mergeMap with concurrency limit of 3
+        // This allows processing up to 3 messages in parallel instead of sequentially
+        mergeMap(
+          ({ messages, type, requestId, settings }) => {
+            const startTime = Date.now();
+            return from(onMessageReceive({ messages, type, requestId }, settings)).pipe(
+              tap(() => {
+                const duration = Date.now() - startTime;
+                this.processorLogs.log(`Batch processed in ${duration}ms`);
+              }),
+              retryWhen((errors) =>
+                errors.pipe(
+                  tap((error) => this.processorLogs.warn(`Retrying message batch due to error: ${error.message}`)),
+                  delay(200), // Reduzido para 200ms de delay
+                  take(3), // Máximo 3 tentativas
+                ),
               ),
-            ),
-          ),
+            );
+          },
+          3, // Process up to 3 messages concurrently
         ),
         catchError((error) => {
           this.processorLogs.error(`Error processing message batch: ${error}`);
@@ -49,6 +60,8 @@ export class BaileysMessageProcessor {
 
   processMessage(payload: MessageUpsertPayload, settings: any) {
     const { messages, type, requestId } = payload;
+    const timestamp = new Date().toISOString();
+    this.processorLogs.log(`[${timestamp}] Message added to queue: ${messages.length} message(s)`);
     this.messageSubject.next({ messages, type, requestId, settings });
   }
 
