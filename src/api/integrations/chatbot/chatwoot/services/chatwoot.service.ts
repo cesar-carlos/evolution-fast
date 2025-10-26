@@ -2296,7 +2296,9 @@ export class ChatwootService {
         const message = await this.getMessageByKeyId(instance, body?.key?.id);
 
         if (!message) {
-          this.logger.warn('Message not found for edit event');
+          this.logger.verbose(
+            `Message not found for edit event (keyId: ${body?.key?.id}) - message may not have been saved to database`,
+          );
           return;
         }
 
