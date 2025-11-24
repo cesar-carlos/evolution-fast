@@ -2,6 +2,7 @@
 Baileys
 # compiled output
 /dist
+/dist_extensions
 /node_modules
 
 /Docker/.env
