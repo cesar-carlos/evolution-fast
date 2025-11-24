@@ -12,6 +12,7 @@ export default defineConfig({
   format: ['esm'],
   target: 'es2020',
   platform: 'node',
+  exclude: ['**/node_modules/**', '**/dist/**', '**/dist_extensions/**'],
   onSuccess: async () => {
     cpSync('src/utils/translations', 'dist/translations', { recursive: true });
   },
