@@ -3,7 +3,11 @@ import { cpSync } from 'node:fs';
 import { defineConfig } from 'tsup';
 
 export default defineConfig({
-  entry: ['src/**/*.ts'],
+  entry: [
+    'src/main.ts',
+    'src/**/*.ts',
+    '!src/extensions/node_modules/**',
+  ],
   outDir: 'dist',
   splitting: false,
   sourcemap: true,
